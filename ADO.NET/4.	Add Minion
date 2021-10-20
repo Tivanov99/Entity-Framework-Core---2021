@@ -1,0 +1,96 @@
+using Microsoft.Data.SqlClient;
+using System;
+
+namespace _4._Add_Minion
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            SqlConnection connection = new SqlConnection(@"Server=DESKTOP-6RL5K65;" +
+                " Database=MinionsDB;" +
+                "Integrated Security=true; " +
+                "TrustServerCertificate = True;");
+            connection.Open();
+
+            using (connection)
+            {
+                string[] Minion = Console.ReadLine().Split(": ");
+                string[] MinionData = Minion[1].Split(" ");
+                int MinionAge = int.Parse(MinionData[1]);
+
+
+                string[] Villain = Console.ReadLine().Split(": ");
+                string VillainName = Villain[1];
+
+
+                string townName = GetTownName(MinionData);
+
+                int TownID = TownValidation(connection, townName);
+
+                int VillainId = VillainValidation(connection,VillainName);
+
+               //  CreateMinion(connection,MinionData[0], MinionAge, TownID);
+                int MinionId = GetMinion(connection,MinionData[0]);
+                CreateNewMinionsVillains(connection,MinionId, VillainId);
+            }
+        }
+        public static void CreateNewMinionsVillains(SqlConnection connection,int MinionId, int VillainId)
+        {
+            SqlCommand command = new SqlCommand($"INSERT INTO MinionsVillains (MinionId, VillainId) VALUES ('{VillainId}', '{MinionId}')", connection);
+            command.ExecuteNonQuery();
+
+            SqlCommand MinionName = new SqlCommand($"SELECT Name FROM Minions WHERE Id = '{MinionId}'", connection);
+            SqlCommand VillainName = new SqlCommand($"SELECT Name FROM Villains WHERE Id = {VillainId}", connection);
+
+            Console.WriteLine($"Successfully added {MinionName.ExecuteScalar()} to be minion of {VillainName.ExecuteScalar()}.");
+        }
+        public static int GetMinion(SqlConnection connection,string name)
+        {
+            SqlCommand commnad = new SqlCommand($"SELECT Id FROM Minions WHERE Name = '{name}'", connection);
+            return (int)commnad.ExecuteScalar();
+        }
+        public static int VillainValidation(SqlConnection connection,string VillainName)
+        {
+            SqlCommand command = new SqlCommand($"SELECT Id FROM Villains WHERE Name = '{VillainName}'", connection);
+            if (command.ExecuteScalar() == null)
+            {
+                CreateNewVillain(connection,VillainName);
+            }
+            return (int)command.ExecuteScalar();
+        }
+
+        public static void CreateMinion(SqlConnection connection,string Name, int age, int townId)
+        {
+            SqlCommand InsertMinion = new SqlCommand($"INSERT INTO Minions (Name, Age, TownId) VALUES ('{Name}','{age}','{townId}')", connection);
+            InsertMinion.ExecuteNonQuery();
+        }
+        public static void CreateNewVillain(SqlConnection connection,string VillainName)
+        {
+            //create in database
+            SqlCommand insert = new SqlCommand($"INSERT INTO Villains (Name, EvilnessFactorId)  VALUES ('{VillainName}', 4)", connection);
+            insert.ExecuteNonQuery();
+            Console.WriteLine($"Villain {VillainName} was added to the database.");
+        }
+        public static int TownValidation(SqlConnection connection, string townName)
+        {
+            SqlCommand GetTown = new SqlCommand($"SELECT Id FROM Towns WHERE Name = '{townName}'", connection);
+            if (GetTown.ExecuteScalar() == null)
+            {
+                CreateTown(connection,townName);
+            }
+            return (int)GetTown.ExecuteScalar();
+        }
+        public static void CreateTown(SqlConnection connection,string townName)
+        {
+            //TODO: create new record to the db
+            SqlCommand Inserting = new SqlCommand($"INSERT INTO Towns (Name) VALUES ('{townName}')", connection);
+            Inserting.ExecuteNonQuery();
+            Console.WriteLine($"Town {townName} was added to the database.");
+        }
+        public static string GetTownName(string[] MinionData)
+        {
+            return MinionData[2];
+        }
+    }
+}
