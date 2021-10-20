@@ -1,0 +1,69 @@
+using Microsoft.Data.SqlClient;
+using System;
+using System.Collections.Generic;
+
+namespace _5._Change_Town_Names_Casing
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            SqlConnection connection = new SqlConnection(@"Server=DESKTOP-6RL5K65; Database=MinionsDB;
+            Integrated Security=true;
+            TrustServerCertificate=True;");
+            connection.Open();
+            using (connection)
+            {
+                string Country = Console.ReadLine();
+                UpdateContryes(connection, Country);
+            }
+        }
+        public static void PrintCountOfAfected(int count)
+        {
+            Console.WriteLine($"{count} town names were affected.");
+        }
+        public static void UpdateContryes(SqlConnection connection, string country)
+        {
+            SqlCommand UpdateContryes = new SqlCommand("UPDATE Towns" +
+                    " SET Name = UPPER(Name)" +
+                    " WHERE CountryCode = " +
+                    $"(SELECT c.Id FROM Countries AS c WHERE c.Name = '{country}')", connection);
+            using (UpdateContryes)
+            {
+                int CountOfAfected = UpdateContryes.ExecuteNonQuery();
+                if (CountOfAfected > 0)
+                {
+                    PrintCountOfAfected(CountOfAfected);
+                    Cities(connection, country);
+                }
+                else
+                {
+                    Console.WriteLine("No town names were affected.");
+                }
+            }
+        }
+        public static void Cities(SqlConnection connection, string country)
+        {
+            SqlCommand cities = new SqlCommand("SELECT " +
+                "t.Name FROM Towns as t" +
+                " JOIN Countries AS c" +
+                " ON c.Id = t.CountryCode" +
+                $" WHERE c.Name = '{country}'", connection);
+            SqlDataReader reader = cities.ExecuteReader();
+            AddCities(reader);
+        }
+        public static void AddCities(SqlDataReader reader)
+        {
+            List<string> list = new List<string>();
+            while (reader.Read())
+            {
+                list.Add((string)reader["Name"]);
+            }
+            PrintCities(list);
+        }
+        public static void PrintCities(List<string> cities)
+        {
+            Console.WriteLine($"[{string.Join(", ", cities)}]");
+        }
+    }
+}
