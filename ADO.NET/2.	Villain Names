@@ -1,0 +1,35 @@
+using Microsoft.Data.SqlClient;
+using System;
+
+namespace ConsoleApp4
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            SqlConnection connection = new SqlConnection(@"Server=DESKTOP-6RL5K65; Database=MinionsDB;
+            Integrated Security=true;
+            TrustServerCertificate=True;");
+            connection.Open();
+            using (connection)
+            {
+                SqlCommand command = new SqlCommand("SELECT V.[Name],
+                COUNT (MV.MinionId) AS [MinionsCount] 
+                FROM [Villains] AS V 
+                JOIN[MinionsVillains] AS MV
+                ON MV.[VillainId] = V.Id
+                GROUP BY V.[Name] 
+                HAVING COUNT(mv.VillainId) > 3", connection);
+                
+                SqlDataReader reader = command.ExecuteReader();
+                using (reader)
+                {
+                    while (reader.Read())
+                    {
+                        Console.WriteLine($"{reader["Name"]} - {reader["MinionsCount"]}");
+                    }
+                }
+            }
+        }
+    }
+}
