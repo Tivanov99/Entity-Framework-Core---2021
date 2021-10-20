@@ -1,0 +1,53 @@
+using Microsoft.Data.SqlClient;
+using System;
+
+namespace ConsoleApp4
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            SqlConnection connection = new SqlConnection(@"Server=DESKTOP-6RL5K65; Database=MinionsDB;
+            Integrated Security=true;
+            TrustServerCertificate=True;");
+            connection.Open();
+
+            using (connection)
+            {
+                int id = int.Parse(Console.ReadLine());
+                SqlCommand GetVName = new SqlCommand($"SELECT [Name] FROM Villains WHERE Id = {id}", connection);
+
+                string Name = (string)GetVName.ExecuteScalar();
+                if (Name == null)
+                {
+                    Console.WriteLine($"No villain with ID {id} exists in the database.");
+                }
+                else
+                {
+                    SqlCommand command = new SqlCommand("SELECT " +
+                    "ROW_NUMBER() OVER (ORDER BY M.[Name]) as RowNum ," +
+                    " M.[Name]," +
+                    " M.[Age]" +
+                    "  FROM" +
+                    "[MinionsVillains] AS MV " +
+                    "JOIN[Minions] AS M ON M.[Id] = MV.[MinionId] " +
+                    "JOIN[Villains] AS V ON V.[Id] = MV.[VillainId] " +
+                    $"WHERE[VillainId] = {id}", connection);
+
+                    Console.WriteLine($"Villain: {Name}");
+                    SqlDataReader reader = command.ExecuteReader();
+                    using (reader)
+                    {
+                        while (reader.Read())
+                        {
+                            long RowNum = (long)reader["RowNum"];
+                            string MinionName = (string)reader["Name"];
+                            int Age = (int)reader["Age"];
+                            Console.WriteLine($"{RowNum}. {MinionName} {Age}");
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
