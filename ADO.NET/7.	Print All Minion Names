@@ -1,0 +1,46 @@
+using Microsoft.Data.SqlClient;
+using System;
+using System.Collections.Generic;
+
+namespace _7._Print_All_Minion_Names
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            SqlConnection connection = new SqlConnection(@"Server=DESKTOP-6RL5K65; Database=MinionsDB;
+            Integrated Security=true;
+            TrustServerCertificate=True;");
+            connection.Open();
+
+            List<string> Names = GetMinionsNames(connection);
+            PrintNames(Names);
+
+        }
+        static List<string> GetMinionsNames(SqlConnection connection)
+        {
+            List<string> names = new List<string>();
+            SqlCommand command = new SqlCommand("SELECT Name FROM Minions", connection);
+            using (command)
+            {
+                SqlDataReader reader = command.ExecuteReader();
+                using (reader)
+                {
+                    while (reader.Read())
+                    {
+                        names.Add((string)reader["Name"]);
+                    }
+                }
+            }
+            return names;
+        }
+        static void PrintNames(List<string> names)
+        {
+            for (int i = 0; i < names.Count / 2; i++)
+            {
+                Console.WriteLine(names[i]);
+                Console.WriteLine(names[names.Count - 1 - i]);
+            }
+        }
+    }
+}
