@@ -1,0 +1,49 @@
+using Microsoft.Data.SqlClient;
+using System;
+
+namespace _9._Increase_Age_Stored_Procedure
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            SqlConnection connection = new SqlConnection(@"Server=DESKTOP-6RL5K65; Database=MinionsDB;
+            Integrated Security=true;
+            TrustServerCertificate=True;");
+            connection.Open();
+            int id = int.Parse(Console.ReadLine());
+
+            IncreaseYears(id, connection);
+
+
+            PrintMinion(id, connection);
+
+        }
+        public static void IncreaseYears(int id, SqlConnection connection)
+        {
+            SqlCommand command = new SqlCommand("Exec usp_GetOlder @id", connection);
+
+            SqlParameter param = new SqlParameter("@id", id);
+            command.Parameters.Add(param);
+            using (command)
+            {
+                command.ExecuteNonQuery();
+            }
+        }
+        public static void PrintMinion(int id, SqlConnection connection)
+        {
+            SqlCommand command = new SqlCommand("SELECT Name, Age FROM Minions WHERE Id = @Id", connection);
+            SqlParameter param = new SqlParameter("@Id", id);
+            command.Parameters.Add(param);
+            using (command)
+            {
+                SqlDataReader reader = command.ExecuteReader();
+                using (reader)
+                {
+                    reader.Read();
+                    Console.WriteLine($"{reader["Name"]} – {reader["Age"]} years old");
+                }
+            }
+        }
+    }
+}
