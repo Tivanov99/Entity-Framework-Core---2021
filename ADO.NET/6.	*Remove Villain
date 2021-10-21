@@ -1,0 +1,74 @@
+using Microsoft.Data.SqlClient;
+using System;
+
+namespace _6._Remove_Villain
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            int VillainId = int.Parse(Console.ReadLine());
+            SqlConnection connection = new SqlConnection(@"Server=DESKTOP-6RL5K65; Database=MinionsDB;Integrated Security=true; TrustServerCertificate = True;");
+            connection.Open();
+
+            string IsExist = FindVillianById(VillainId, connection);
+
+            if (IsExist != null)
+            {
+                string ReleasedMessage = ReleaseMinions(VillainId, connection);
+                string DeletedMessage = DeleteVillain(VillainId, connection, IsExist);
+                Console.WriteLine(DeletedMessage);
+                Console.WriteLine(ReleasedMessage);
+            }
+
+        }
+        static string FindVillianById(int id, SqlConnection conneciton)
+        {
+            SqlCommand command = new SqlCommand("SELECT Name FROM Villains WHERE Id = @villainId", conneciton);
+            SqlParameter IdParameter = new SqlParameter("@villainId", id);
+            using (command)
+            {
+                command.Parameters.Add(IdParameter);
+                SqlDataReader reader = command.ExecuteReader();
+                using (reader)
+                {
+                    if (reader.HasRows)
+                    {
+                        reader.Read();
+                        return (string)reader["Name"];
+                        //$"{(string)reader["Name"]} was deleted.";
+                    }
+                }
+                return null;
+            }
+        }
+
+        static string DeleteVillain(int Id, SqlConnection connection, string VillainName)
+        {
+            SqlCommand DeletingCommand = new SqlCommand("DELETE FROM Villains WHERE Id = @villainId", connection);
+
+            SqlParameter IdParameter = new SqlParameter("@villainId", Id);
+
+            DeletingCommand.Parameters.Add(IdParameter);
+            using (DeletingCommand)
+            {
+                using (DeletingCommand)
+                {
+                    DeletingCommand.ExecuteNonQuery();
+                    return ($"{VillainName} was deleted.");
+                }
+            }
+        }
+        static string ReleaseMinions(int VillainId, SqlConnection connection)
+        {
+            SqlCommand command = new SqlCommand("DELETE FROM MinionsVillains WHERE VillainId = @villainId", connection);
+            SqlParameter IdParam = new SqlParameter("@villainId", VillainId);
+            command.Parameters.Add(IdParam);
+            using (command)
+            {
+                int Rows = command.ExecuteNonQuery();
+                return ($"{Rows} minions were released.");
+            }
+        }
+    }
+}
