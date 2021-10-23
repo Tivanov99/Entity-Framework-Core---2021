@@ -1,0 +1,59 @@
+using SoftUni.Data;
+using SoftUni.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace SoftUni
+{
+    public class StartUp
+    {
+        static void Main(string[] args)
+        {
+            SoftUniContext context = new SoftUniContext();
+            //Console.WriteLine(GetEmployeesFullInformation(context)); 
+            //Console.WriteLine(GetEmployeesWithSalaryOver50000(context));
+            Console.WriteLine(GetEmployeesFromResearchAndDevelopment(context));
+        }
+        public static string GetEmployeesFullInformation(SoftUniContext context)
+        {
+            var employees = context.Employees.Select(x => x).OrderBy(x => x.EmployeeId).ToList();
+            List<string> emp = new List<string>();
+            string result = "";
+            foreach (var employee in employees)
+            {
+                result += ($"{employee.FirstName} {employee.LastName} {employee.MiddleName} {employee.JobTitle} {employee.Salary:f2}\n");
+            }
+            return result;
+        }
+        public static string GetEmployeesWithSalaryOver50000(SoftUniContext context)
+        {
+            List<Employee> employees = context.Employees.Select(x => x).Where(x => x.Salary > 50000)
+                .OrderBy(x => x.FirstName).ToList();
+            HashSet<string> result = new HashSet<string>();
+            foreach (Employee employee in employees)
+            {
+                result.Add($"{employee.FirstName} - {employee.Salary:f2}");
+            }
+            return string.Join("\n", result);
+        }
+        public static string GetEmployeesFromResearchAndDevelopment(SoftUniContext context)
+        {
+            var Employees = context
+                .Employees
+                .Select(x => x)
+                .Where
+                (x => x.Department.Name == "Research and Development").OrderBy(x => x.Salary)
+                .ThenByDescending(x => x.FirstName)
+                .ToList();
+
+            List<string> result = new List<string>();
+
+            foreach (Employee employee in Employees)
+            {
+                result.Add($"{employee.FirstName} {employee.LastName} from Research and Development - ${employee.Salary:f2}");
+            }
+            return string.Join("\n", result);
+        }
+    }
+}
