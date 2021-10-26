@@ -1,29 +1,40 @@
-
 using SoftUni.Data;
+using SoftUni.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace SoftUni
 {
-    class StartUp
+    public class StartUp
     {
         static void Main(string[] args)
         {
             SoftUniContext context = new SoftUniContext();
-            Console.WriteLine(GetEmployeesFullInformation(context)) ;
+            Console.WriteLine(GetEmployeesFullInformation(context));
+            //Console.WriteLine(GetEmployeesWithSalaryOver50000(context));
         }
         public static string GetEmployeesFullInformation(SoftUniContext context)
         {
-            var employees = context.Employees.Select(x => x).OrderBy(x => x.EmployeeId).ToList();
-            List<string> emp = new List<string>();
+            StringBuilder result = new StringBuilder();
+            var employees = context.Employees.Select(emp => new { emp.EmployeeId, emp.FirstName, emp.LastName, emp.MiddleName, emp.JobTitle, emp.Salary }).OrderBy(x => x.EmployeeId).ToList();
             foreach (var employee in employees)
             {
-                emp.Add($"{employee.FirstName} {employee.LastName} {employee.MiddleName} {employee.JobTitle} {employee.Salary:f2}");
-                //Console.WriteLine($"{employee.FirstName} {employee.LastName} {employee.MiddleName} {employee.JobTitle} {employee.Salary:f2}");
+                result.AppendLine($"{employee.FirstName} {employee.LastName} {employee.MiddleName} {employee.JobTitle} {employee.Salary:f2}");
             }
-            return string.Join("\n", emp);
+            return result.ToString().TrimEnd();
         }
+        //public static string GetEmployeesWithSalaryOver50000(SoftUniContext context)
+        //{
+        //    var employees = context.Employees.Select(x => new { x.FirstName, x.Salary }).Where(x => x.Salary > 50000).OrderBy(x => x.FirstName).ToList();
+        //    List<string> employeesResult = new List<string>();
+        //    StringBuilder sb = new StringBuilder();
+        //    foreach (var employee in employees)
+        //    {
+        //        sb.AppendLine($"{employee.FirstName} - {employee.Salary:F2}");
+        //    }
+        //   return sb.ToString().TrimEnd();
+        //}
     }
-    //Scaffold-DbContext -Connection "Server=DESKTOP-6RL5K65;Database=SoftUni;Integrated Security=True;TrustServerCertificate=True;" -Provider Microsoft.EntityFrameworkCore.SqlServer -OutputDir Data/Models
 }
