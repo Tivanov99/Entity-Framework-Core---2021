@@ -26,14 +26,15 @@ namespace BookShop
         {
             ICollection<Book> books = context.BooksCategories
                 .Where(bc => bc.Book.Copies < 4200)
-                .Select(x=>x.Book)
+                .Select(x => x.Book)
                 .ToList();
-            int count = books.Count();
 
             context.Books
                 .RemoveRange(books);
 
-            return context.SaveChanges();
+            context.SaveChanges();
+
+            return books.Count();
         }
     }
 }
