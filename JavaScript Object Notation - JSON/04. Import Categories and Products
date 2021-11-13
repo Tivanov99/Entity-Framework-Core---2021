@@ -1,0 +1,28 @@
+namespace ProductShop
+{
+    using Newtonsoft.Json;
+    using ProductShop.Data;
+    using ProductShop.Models;
+    using System.IO;
+    using System;
+    using System.Linq;
+    using Microsoft.EntityFrameworkCore;
+    using Newtonsoft.Json.Serialization;
+    using System.Collections.Generic;
+
+    public class StartUp
+    {
+        public static void Main(string[] args)
+        {
+            string data = File.ReadAllText("../../../Datasets/categories-products.json");
+            Console.WriteLine(ImportCategoryProducts(context,data));
+        }
+       
+        public static string ImportCategoryProducts(ProductShopContext context, string inputJson)
+        {
+            CategoryProduct[] categoryProducts = JsonConvert.DeserializeObject<CategoryProduct[]>(inputJson);
+            context.CategoryProducts.AddRange(categoryProducts);
+            return $"Successfully imported {context.SaveChanges()}"; 
+        }
+    }
+}
