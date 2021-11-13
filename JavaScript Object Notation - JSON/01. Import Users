@@ -1,0 +1,27 @@
+namespace ProductShop
+{
+    using Newtonsoft.Json;
+    using ProductShop.Data;
+    using ProductShop.Models;
+    using System.IO;
+    using System;
+    using System.Linq;
+
+    public class StartUp
+    {
+        public static void Main(string[] args)
+        {
+            ProductShopContext context = new ProductShopContext();
+           
+            //context.Database.EnsureCreated();
+            string reader = File.ReadAllText("../../../Datasets/users.json");
+            Console.WriteLine(ImportUsers(context, reader));
+        }
+        public static string ImportUsers(ProductShopContext context, string inputJson)
+        {
+            User[] users = JsonConvert.DeserializeObject<User[]>(inputJson);
+            context.Users.AddRange(users);
+            return $"Successfully imported {context.SaveChanges()}";
+        }
+    }
+}
