@@ -1,0 +1,66 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using CarDealer.Data;
+using CarDealer.DTO;
+using CarDealer.Models;
+using Newtonsoft.Json;
+
+namespace CarDealer
+{
+    public class StartUp
+    {
+        public static IMapper mapper;
+
+        public static void Main(string[] args)
+        {
+            CarDealerContext context = new CarDealerContext();
+            //context.Database.EnsureCreated();
+
+            //string text = File.ReadAllText("../../../Datasets/suppliers.json");
+
+            //Console.WriteLine(ImportSuppliers(context, text));
+
+
+            string text1 = File.ReadAllText("../../../Datasets/parts.json");
+
+            Console.WriteLine(ImportParts(context, text1));
+        }
+        public static string ImportSuppliers(CarDealerContext context, string inputJson)
+        {
+            var result = JsonConvert.DeserializeObject<List<Supplier>>(inputJson);
+
+
+            context.Suppliers
+                .AddRange(result);
+            return $"Successfully imported {context.SaveChanges()}.";
+        }
+        public static string ImportParts(CarDealerContext context, string inputJson)
+        {
+            Initialize();
+            List<SupplierDTO> suppliers = context
+                .Suppliers
+                .ProjectTo<SupplierDTO>(mapper.ConfigurationProvider)
+                .ToList();
+
+
+            List<Part> parts = JsonConvert.DeserializeObject<List<Part>>(inputJson)
+                .Where(x => suppliers.Select(y => y.Id).Contains(x.SupplierId)).ToList();
+
+            context.Parts.AddRange(parts);
+
+            return $"Successfully imported {context.SaveChanges()}.";
+        }
+        public static void Initialize()
+        {
+            var config = new MapperConfiguration(cnfg =>
+            {
+                cnfg.AddProfile<CarDealerProfile>();
+            });
+            mapper = new Mapper(config);
+        }
+    }
+}
