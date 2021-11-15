@@ -1,0 +1,53 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using CarDealer.Data;
+using CarDealer.DTO;
+using CarDealer.Models;
+using Newtonsoft.Json;
+
+namespace CarDealer
+{
+    public class StartUp
+    {
+        public static IMapper mapper;
+
+        public static void Main(string[] args)
+        {
+            CarDealerContext context = new CarDealerContext();
+
+            Console.WriteLine(GetOrderedCustomers(context));
+        }
+
+        public static string GetOrderedCustomers(CarDealerContext context)
+        {
+            Initialize();
+            var result = context
+                .Customers
+                .OrderBy(c => c.BirthDate)
+                .ThenBy(c => c.IsYoungDriver)
+                .ProjectTo<CustomerDTOOutput>(mapper.ConfigurationProvider)
+                .ToList();
+
+            JsonSerializerSettings settings = new JsonSerializerSettings()
+            {
+                Formatting = Formatting.Indented
+            };
+
+            string res = JsonConvert.SerializeObject(result, settings);
+
+            return res;
+        }
+        public static void Initialize()
+        {
+            var config = new MapperConfiguration(cnfg =>
+            {
+                cnfg.AddProfile<CarDealerProfile>();
+            });
+            mapper = new Mapper(config);
+        }
+    }
+}
