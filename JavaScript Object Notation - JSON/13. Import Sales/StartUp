@@ -1,0 +1,47 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using CarDealer.Data;
+using CarDealer.DTO;
+using CarDealer.Models;
+using Newtonsoft.Json;
+
+namespace CarDealer
+{
+    public class StartUp
+    {
+        public static IMapper mapper;
+
+        public static void Main(string[] args)
+        {
+            CarDealerContext context = new CarDealerContext();
+          
+
+            string text4 = File.ReadAllText("../../../Datasets/sales.json");
+
+            Console.WriteLine(ImportSales(context, text4));
+
+        }
+       
+        public static string ImportSales(CarDealerContext context, string inputJson)
+        {
+            List<Sale> sales = JsonConvert.DeserializeObject<List<Sale>>(inputJson);
+
+            context
+                .Sales.AddRange(sales);
+            return $"Successfully imported {context.SaveChanges()}.";
+        }
+
+        public static void Initialize()
+        {
+            var config = new MapperConfiguration(cnfg =>
+            {
+                cnfg.AddProfile<CarDealerProfile>();
+            });
+            mapper = new Mapper(config);
+        }
+    }
+}
