@@ -1,0 +1,55 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using CarDealer.Data;
+using CarDealer.DTO;
+using CarDealer.Models;
+using Newtonsoft.Json;
+
+namespace CarDealer
+{
+    public class StartUp
+    {
+        public static IMapper mapper;
+
+        public static void Main(string[] args)
+        {
+            CarDealerContext context = new CarDealerContext();
+
+            Console.WriteLine(GetCarsFromMakeToyota(context));
+        }
+       
+
+        public static string GetCarsFromMakeToyota(CarDealerContext context)
+        {
+            Initialize();
+
+            List<CarOutputDTO> cars = context
+                .Cars
+                .Where(x => x.Make == "Toyota")
+                .ProjectTo<CarOutputDTO>(mapper.ConfigurationProvider)
+                .OrderBy(x => x.Model)
+                .ThenByDescending(x => x.TravelledDistance)
+                .ToList();
+
+            JsonSerializerSettings settings = new JsonSerializerSettings()
+            {
+                Formatting = Formatting.Indented
+            };
+
+            string result = JsonConvert.SerializeObject(cars, settings);
+
+            return result;
+        }
+        public static void Initialize()
+        {
+            var config = new MapperConfiguration(cnfg =>
+            {
+                cnfg.AddProfile<CarDealerProfile>();
+            });
+            mapper = new Mapper(config);
+        }
+    }
+}
