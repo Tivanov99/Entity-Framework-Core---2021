@@ -1,0 +1,39 @@
+using CarDealer.Data;
+using System.IO;
+using System.Xml.Linq;
+using System;
+using System.Collections.Generic;
+using CarDealer.Models;
+using System.Linq;
+
+namespace CarDealer
+{
+    public class StartUp
+    {
+        public static void Main(string[] args)
+        {
+            CarDealerContext context = new CarDealerContext();
+
+            string customers = File.ReadAllText("../../../Datasets/customers.xml");
+            Console.WriteLine(ImportCustomers(context, customers));
+        }
+        
+        public static string ImportCustomers(CarDealerContext context, string inputXml)
+        {
+            List<Customer> parsedCustomers = XDocument.Parse(inputXml).Root.Elements()
+                .Select(x => new Customer()
+                {
+                    Name = x.Element("name").Value,
+                    BirthDate = DateTime.Parse(x.Element("birthDate").Value),
+                    IsYoungDriver = bool.Parse(x.Element("isYoungDriver").Value)
+                })
+                .ToList();
+
+            context.Customers.AddRange(parsedCustomers);
+            context.SaveChanges();
+
+            return $"Successfully imported {parsedCustomers.Count}";
+        }
+        
+    }
+}
