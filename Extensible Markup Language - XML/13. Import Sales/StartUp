@@ -1,0 +1,44 @@
+using CarDealer.Data;
+using System.IO;
+using System.Xml.Linq;
+using System;
+using System.Collections.Generic;
+using CarDealer.Models;
+using System.Linq;
+
+namespace CarDealer
+{
+    public class StartUp
+    {
+        public static void Main(string[] args)
+        {
+            CarDealerContext context = new CarDealerContext();
+
+            string sales = File.ReadAllText("../../../Datasets/sales.xml");
+            Console.WriteLine(ImportSales(context,sales));
+        }
+        
+        public static string ImportSales(CarDealerContext context, string inputXml)
+        {
+            HashSet<int> cars = context
+                .Cars
+                .Select(x => x.Id)
+                .ToHashSet();
+
+            HashSet<Sale> sales = XDocument.Parse(inputXml).Root.Elements()
+                .Where(x => cars.Contains(int.Parse(x.Element("carId").Value)))
+                .Select(s => new Sale()
+                {
+                    CarId = int.Parse(s.Element("carId").Value),
+                    CustomerId = int.Parse(s.Element("customerId").Value),
+                    Discount = decimal.Parse(s.Element("discount").Value)
+                })
+                .ToHashSet();
+
+            context.Sales.AddRange(sales);
+            context.SaveChanges();
+
+            return $"Successfully imported {sales.Count}";
+        }
+    }
+}
