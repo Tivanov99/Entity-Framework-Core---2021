@@ -1,0 +1,39 @@
+using CarDealer.Data;
+using System.IO;
+using System.Xml.Linq;
+using System;
+using System.Collections.Generic;
+using CarDealer.Models;
+
+namespace CarDealer
+{
+    public class StartUp
+    {
+        public static void Main(string[] args)
+        {
+            CarDealerContext context = new CarDealerContext();
+
+            string suppliers = File.ReadAllText("../../../Datasets/suppliers.xml");
+            Console.WriteLine(ImportSuppliers(context, suppliers));
+        }
+        public static string ImportSuppliers(CarDealerContext context, string inputXml)
+        {
+            var parsed = XDocument.Parse(inputXml).Root.Elements();
+
+            List<Supplier> suppliers = new List<Supplier>();
+
+            foreach (var supplier in parsed)
+            {
+                string supplierName = supplier.Element("name").Value;
+
+                bool isImporter = bool.Parse(supplier.Element("isImporter").Value);
+
+                suppliers.Add(new Supplier() { Name = supplierName, IsImporter = isImporter });
+
+            }
+            context.Suppliers.AddRange(suppliers);
+            context.SaveChanges();
+            return $"Successfully imported {suppliers.Count}";
+        }
+    }
+}
