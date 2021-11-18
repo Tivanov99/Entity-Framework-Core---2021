@@ -1,0 +1,73 @@
+using CarDealer.Data;
+using System.IO;
+using System.Xml.Linq;
+using System;
+using System.Collections.Generic;
+using CarDealer.Models;
+using System.Linq;
+using CarDealer.Dto;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using System.Xml.Serialization;
+using CarDealer.DTO;
+using System.Xml;
+using Microsoft.EntityFrameworkCore;
+
+namespace CarDealer
+{
+    public class StartUp
+    {
+        public static IMapper mapper;
+        public static void Main(string[] args)
+        {
+            CarDealerContext context = new CarDealerContext();
+
+            Console.WriteLine(GetCarsWithTheirListOfParts(context));
+
+        }
+        public static string GetCarsWithTheirListOfParts(CarDealerContext context)
+        {
+            Initialize();
+
+            List<CarsWithPartsOutputDTO> cars = context
+                .Cars
+                .Include(x => x.PartCars)
+                .Select(x => new CarsWithPartsOutputDTO()
+                {
+                    Make = x.Make,
+                    Model = x.Model,
+                    TravelledDistance = x.TravelledDistance,
+                    Parts = x.PartCars.Select(c => new PartOutputDTO()
+                    {
+                        Price=c.Part.Price,
+                        Name=c.Part.Name
+                    })
+                    .OrderByDescending(c => c.Price)
+                    .ToList()
+                })
+                .OrderByDescending(c => c.TravelledDistance)
+                .ThenBy(c => c.Model)
+                .Take(5)
+                .ToList();
+
+            XmlSerializer serializer = new XmlSerializer(typeof(List<CarsWithPartsOutputDTO>), new XmlRootAttribute("cars"));
+
+            StringWriter sw = new StringWriter();
+
+            XmlSerializerNamespaces ns = new XmlSerializerNamespaces();
+            ns.Add("", "");
+
+            serializer.Serialize(sw, cars, ns);
+
+            return sw.ToString();
+        }
+        public static void Initialize()
+        {
+            var configuration = new MapperConfiguration(cnfg =>
+            {
+                cnfg.AddProfile<CarDealerProfile>();
+            });
+            mapper = new Mapper(configuration);
+        }
+    }
+}
