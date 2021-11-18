@@ -1,0 +1,81 @@
+using CarDealer.Data;
+using System.IO;
+using System.Xml.Linq;
+using System;
+using System.Collections.Generic;
+using CarDealer.Models;
+using System.Linq;
+
+namespace CarDealer
+{
+    public class StartUp
+    {
+        public static void Main(string[] args)
+        {
+            CarDealerContext context = new CarDealerContext();
+
+            string cars = File.ReadAllText("../../../Datasets/cars.xml");
+            Console.WriteLine(ImportCars(context, cars));
+        }
+      
+        public static HashSet<int> ParsePartsIds(XElement parts)
+        {
+            return parts
+                    .Elements()
+                    .Attributes("id")
+                    .Select(x => int.Parse(x.Value))
+                    .ToHashSet();
+        }
+
+        public static Car MakeNewCar(string make, string model, long distance)
+        {
+            return new Car()
+            {
+                Make = make,
+                Model = model,
+                TravelledDistance = distance,
+            };
+        }
+        public static string ImportCars(CarDealerContext context, string inputXml)
+        {
+            var parsedCars = XDocument.Parse(inputXml).Root.Elements();
+
+            HashSet<int> AvailableParts = GetavailablePartsIds(context);
+
+            List<Car> cars = new List<Car>();
+
+            foreach (var car in parsedCars)
+            {
+                string make = car.Element("make").Value;
+                string model = car.Element("model").Value;
+                long travelledDistance = long.Parse(car.Element("TraveledDistance").Value);
+                HashSet<int> parts = ParsePartsIds(car.Element("parts"));
+
+
+                Car Car = MakeNewCar(make, model, travelledDistance);
+                AddPartsToCar(Car, parts, AvailableParts);
+                cars.Add(Car);
+            }
+            context.Cars.AddRange(cars);
+            context.SaveChanges();
+            return $"Successfully imported {cars.Count}";
+        }
+        public static void AddPartsToCar(Car car, HashSet<int> parts, HashSet<int> availableParts)
+        {
+            foreach (int partId in parts)
+            {
+                if (availableParts.Contains(partId))
+                {
+                    car.PartCars.Add(new PartCar() { PartId = partId });
+                }
+            }
+        }
+        public static HashSet<int> GetavailablePartsIds(CarDealerContext context)
+        {
+            return context
+                  .Parts
+                  .Select(x => x.Id)
+                  .ToHashSet();
+        }
+    }
+}
