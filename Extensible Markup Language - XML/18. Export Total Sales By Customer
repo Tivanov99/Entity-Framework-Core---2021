@@ -1,0 +1,60 @@
+using CarDealer.Data;
+using System.IO;
+using System.Xml.Linq;
+using System;
+using System.Collections.Generic;
+using CarDealer.Models;
+using System.Linq;
+using CarDealer.Dto;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using System.Xml.Serialization;
+using CarDealer.DTO;
+using System.Xml;
+using Microsoft.EntityFrameworkCore;
+
+namespace CarDealer
+{
+    public class StartUp
+    {
+        public static IMapper mapper;
+        public static void Main(string[] args)
+        {
+            CarDealerContext context = new CarDealerContext();
+
+            Console.WriteLine(GetTotalSalesByCustomer(context));
+        }
+
+        public static string GetTotalSalesByCustomer(CarDealerContext context)
+        {
+            List<CustomerOutputDTO> result = context
+                  .Customers
+                  .Where(c => c.Sales.Count > 0)
+                  .Select(c => new CustomerOutputDTO()
+                  {
+                      Name = c.Name,
+                      BroughtCarsCount = c.Sales.Count,
+                      TotalSpendMoney = c.Sales.Select(x => x.Car).SelectMany(u => u.PartCars).Sum(p => p.Part.Price)
+                  })
+                  .OrderByDescending(x => x.TotalSpendMoney)
+                  .ToList();
+
+            XmlSerializer serializer = new XmlSerializer(typeof(List<CustomerOutputDTO>), new XmlRootAttribute("customers"));
+          
+            StringWriter writer = new StringWriter();
+            XmlSerializerNamespaces ns = new XmlSerializerNamespaces();
+            ns.Add("", "");
+
+            serializer.Serialize(writer, result, ns);
+            return writer.ToString();
+        }
+        public static void Initialize()
+        {
+            var configuration = new MapperConfiguration(cnfg =>
+            {
+                cnfg.AddProfile<CarDealerProfile>();
+            });
+            mapper = new Mapper(configuration);
+        }
+    }
+}
