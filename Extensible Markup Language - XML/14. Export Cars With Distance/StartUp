@@ -1,0 +1,59 @@
+using CarDealer.Data;
+using System.IO;
+using System.Xml.Linq;
+using System;
+using System.Collections.Generic;
+using CarDealer.Models;
+using System.Linq;
+using CarDealer.Dto;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using System.Xml.Serialization;
+
+namespace CarDealer
+{
+    public class StartUp
+    {
+        public static IMapper mapper;
+        public static void Main(string[] args)
+        {
+            CarDealerContext context = new CarDealerContext();
+
+            Console.WriteLine(GetCarsWithDistance(context));
+        }
+
+        public static string GetCarsWithDistance(CarDealerContext context)
+        {
+            Initialize();
+
+            HashSet<CarOutputDTO> cars = context
+                .Cars
+                .Where(c => c.TravelledDistance > 2000000)
+                .OrderBy(c=>c.Make)
+                .ThenBy(c => c.Model)
+                .Take(10)
+                .ProjectTo<CarOutputDTO>(mapper.ConfigurationProvider)
+                .ToHashSet();
+
+            XmlSerializer serializer = new XmlSerializer(typeof(HashSet<CarOutputDTO>), new XmlRootAttribute("cars"));
+
+            XmlSerializerNamespaces ns = new XmlSerializerNamespaces();
+
+            ns.Add("", "");
+
+            StringWriter writer = new StringWriter();
+
+            serializer.Serialize(writer, cars, ns);
+
+            return writer.ToString();
+        }
+        public static void Initialize()
+        {
+            var configuration = new MapperConfiguration(cnfg =>
+            {
+                cnfg.AddProfile<CarDealerProfile>();
+            });
+            mapper = new Mapper(configuration);
+        }
+    }
+}
