@@ -1,0 +1,49 @@
+using CarDealer.Data;
+using System.IO;
+using System.Xml.Linq;
+using System;
+using System.Collections.Generic;
+using CarDealer.Models;
+using System.Linq;
+
+namespace CarDealer
+{
+    public class StartUp
+    {
+        public static void Main(string[] args)
+        {
+            CarDealerContext context = new CarDealerContext();
+
+            string parts = File.ReadAllText("../../../Datasets/parts.xml");
+            Console.WriteLine(ImportParts(context, parts));
+        }
+        
+
+        public static string ImportParts(CarDealerContext context, string inputXml)
+        {
+            var data = XDocument.Parse(inputXml).Root.Elements();
+
+            List<Part> parts = new List<Part>();
+
+            List<int> suppliers = context.Suppliers
+                .Select(x => x.Id)
+                .ToList();
+
+            foreach (var part in data)
+            {
+                int supplierId = int.Parse(part.Element("supplierId").Value);
+
+                if (suppliers.Contains(supplierId))
+                {
+                    string name = part.Element("name").Value;
+                    decimal price = decimal.Parse(part.Element("price").Value);
+                    int quantity = int.Parse(part.Element("quantity").Value);
+                    parts.Add(new Part() { Name = name, Price = price, Quantity = quantity, SupplierId = supplierId });
+                }
+            }
+            context.Parts.AddRange(parts);
+            context.SaveChanges();
+            return $"Successfully imported {parts.Count}";
+        }
+    }
+}
