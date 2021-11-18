@@ -1,0 +1,58 @@
+using CarDealer.Data;
+using System.IO;
+using System.Xml.Linq;
+using System;
+using System.Collections.Generic;
+using CarDealer.Models;
+using System.Linq;
+using CarDealer.Dto;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
+using System.Xml.Serialization;
+using CarDealer.DTO;
+using System.Xml;
+
+namespace CarDealer
+{
+    public class StartUp
+    {
+        public static IMapper mapper;
+        public static void Main(string[] args)
+        {
+            CarDealerContext context = new CarDealerContext();
+
+            Console.WriteLine(GetCarsFromMakeBmw(context));
+        }
+
+        public static string GetCarsFromMakeBmw(CarDealerContext context)
+        {
+            Initialize();
+            HashSet<BmwDTO> bmw = context
+                .Cars
+                .Where(c => c.Make == "BMW")
+                .OrderBy(c => c.Model)
+                .ThenByDescending(c => c.TravelledDistance)
+                .ProjectTo<BmwDTO>(mapper.ConfigurationProvider)
+                .ToHashSet();
+
+            XmlSerializer serializer = new XmlSerializer(typeof(HashSet<BmwDTO>), new XmlRootAttribute("cars"));
+
+            XmlSerializerNamespaces ns = new XmlSerializerNamespaces();
+            ns.Add("", "");
+
+            StringWriter writer = new StringWriter();
+
+            serializer.Serialize(writer, bmw, ns);
+
+            return writer.ToString();
+        }
+        public static void Initialize()
+        {
+            var configuration = new MapperConfiguration(cnfg =>
+            {
+                cnfg.AddProfile<CarDealerProfile>();
+            });
+            mapper = new Mapper(configuration);
+        }
+    }
+}
