@@ -1,0 +1,231 @@
+namespace TeisterMask.DataProcessor
+{
+    using System;
+    using System.Collections.Generic;
+
+    using System.ComponentModel.DataAnnotations;
+    using System.Globalization;
+    using System.IO;
+    using System.Linq;
+    using System.Text;
+    using System.Text.RegularExpressions;
+    using System.Xml.Serialization;
+    using Data;
+    using Microsoft.EntityFrameworkCore;
+    using Newtonsoft.Json;
+    using TeisterMask.Data.Models;
+    using TeisterMask.Data.Models.Enums;
+    using TeisterMask.DataProcessor.ImportDto;
+    using ValidationContext = System.ComponentModel.DataAnnotations.ValidationContext;
+
+    public class Deserializer
+    {
+        private const string ErrorMessage = "Invalid data!";
+
+        private const string SuccessfullyImportedProject
+            = "Successfully imported project - {0} with {1} tasks.";
+
+        private const string SuccessfullyImportedEmployee
+            = "Successfully imported employee - {0} with {1} tasks.";
+
+        public static string ImportProjects(TeisterMaskContext context, string xmlString)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            XmlRootAttribute root = new XmlRootAttribute("Projects");
+            XmlSerializer serializer = new XmlSerializer(typeof(HashSet<ProjectImportDTO>), root);
+
+            using StringReader reader = new StringReader(xmlString);
+
+            HashSet<ProjectImportDTO> DTOprojects = (HashSet<ProjectImportDTO>)serializer
+                .Deserialize(reader);
+
+
+            HashSet<Project> ogProjects = new HashSet<Project>();
+
+
+            foreach (ProjectImportDTO projectDTO in DTOprojects)
+            {
+                //check for null Name
+                if (projectDTO.Name.Length < 2 || projectDTO.Name.Length > 40 || projectDTO.Name == null)
+                {
+                    sb.AppendLine("Invalid data!");
+                    continue;
+                }
+
+                DateTime projectOpenDate;
+                DateTime? projectDueDate = null;
+
+
+                bool isValidOpenDate = DateTime.TryParseExact(projectDTO.OpenDate, "dd/MM/yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out projectOpenDate);
+                if (!isValidOpenDate)
+                {
+                    sb.AppendLine("Invalid data!");
+                    continue;
+                }
+
+
+                if (!string.IsNullOrWhiteSpace(projectDTO.DueDate))
+                {
+                    DateTime curr;
+                    bool isDueDateValid = DateTime.TryParseExact(projectDTO.DueDate, "dd/MM/yyyy",
+                       CultureInfo.InvariantCulture, DateTimeStyles.None, out curr);
+
+                    if (!isDueDateValid)
+                    {
+                        sb.AppendLine(ErrorMessage);
+                        continue;
+                    }
+                    projectDueDate = curr;
+                }
+
+
+                Project project = new Project()
+                {
+                    Name = projectDTO.Name,
+                    OpenDate = projectOpenDate,
+                    DueDate = projectDueDate,
+                    Tasks = new HashSet<Task>()
+                };
+
+                foreach (ProjectsTaskImportDTO taskDTO in projectDTO.Tasks)
+                {
+                    if (taskDTO.Name.Length < 2 && taskDTO.Name.Length > 40 || taskDTO.Name == "")
+                    {
+                        sb.AppendLine("Invalid data!");
+                        continue;
+                    }
+
+                    DateTime openDateTask;
+                    DateTime dueDateTask;
+
+                    try
+                    {
+                        openDateTask = DateTime.Parse(taskDTO.OpenDate);
+                    }
+                    catch (Exception ex)
+                    {
+                        sb.AppendLine("Invalid data!");
+                        continue;
+                    }
+
+                    try
+                    {
+                        dueDateTask = DateTime.Parse(taskDTO.DueDate);
+                    }
+                    catch (Exception ex)
+                    {
+                        sb.AppendLine("Invalid data!");
+                        continue;
+                    }
+
+
+                    if (openDateTask < projectOpenDate)
+                    {
+                        sb.AppendLine("Invalid data!");
+                        continue;
+                    }
+                    else if (dueDateTask > projectDueDate)
+                    {
+                        sb.AppendLine("Invalid data!");
+                        continue;
+                    }
+                    project.Tasks.Add(new Task()
+                    {
+                        Name = taskDTO.Name,
+                        OpenDate = openDateTask,
+                        DueDate = dueDateTask,
+                        ExecutionType = (ExecutionType)int.Parse(taskDTO.ExecutionType),
+                        LabelType = (LabelType)int.Parse(taskDTO.LabelType),
+                    });
+                }
+                sb.AppendLine($"Successfully imported project - {project.Name} with {project.Tasks.Count()} tasks.");
+                ogProjects.Add(project);
+            }
+         
+            context.Projects.AddRange(ogProjects);
+            context.SaveChanges();
+            return sb.ToString().TrimEnd();
+        }
+
+        public static string ImportEmployees(TeisterMaskContext context, string jsonString)
+        {
+
+            //string text = File.ReadAllText("../../../Datasets/test.json");
+            HashSet<EmployeeImportDTO> employeeImports = JsonConvert.DeserializeObject<HashSet<EmployeeImportDTO>>(jsonString);
+
+            HashSet<Employee> employees = new HashSet<Employee>();
+
+            StringBuilder sb = new StringBuilder();
+
+            HashSet<int> DbTasks = context
+                .Tasks
+                .AsNoTracking()
+                .Select(x => x.Id)
+                .ToHashSet();
+
+
+            HashSet<Employee> ogEmployees = new HashSet<Employee>();
+
+            foreach (EmployeeImportDTO employeeDTO in employeeImports)
+            {
+                if (employeeDTO.Username.Length < 2 || employeeDTO.Username.Length > 40 || string.IsNullOrEmpty(employeeDTO.Username))
+                {
+                    sb.AppendLine("Invalid data!");
+                    continue;
+                }
+
+                Regex phoneRegex = new Regex(@"^(\+0?1\s)?\(?\d{3}\)?[\s.-]\d{3}[\s.-]\d{4}$");
+                if (!phoneRegex.IsMatch(employeeDTO.Phone))
+                {
+                    sb.AppendLine("Invalid data!");
+                    continue;
+                }
+
+                Regex nameRegex = new Regex(@"[a-zA-Z]+([0-9])|[a-zA-Z]");
+                if (!nameRegex.IsMatch(employeeDTO.Username))
+                {
+                    sb.AppendLine("Invalid data!");
+                    continue;
+                }
+
+                Employee employee = new Employee()
+                {
+                    Username = employeeDTO.Username,
+                    Phone = employeeDTO.Phone,
+                    Email = employeeDTO.Email,
+                    EmployeesTasks = new HashSet<EmployeeTask>()
+                };
+
+                foreach (int task in employeeDTO.Tasks)
+                {
+                    if (DbTasks.Contains(task))
+                    {
+                        employee.EmployeesTasks.Add(new EmployeeTask()
+                        {
+                            TaskId = task
+                        }); ;
+                    }
+                    else
+                    {
+                        sb.AppendLine("Invalid data!");
+                    }
+                }
+                sb.AppendLine($"Successfully imported employee - {employee.Username} with {employee.EmployeesTasks.Count} tasks.");
+                ogEmployees.Add(employee);
+            }
+
+            context.Employees.AddRange(ogEmployees);
+            context.SaveChanges();
+            return sb.ToString().TrimEnd();
+        }
+
+        private static bool IsValid(object dto)
+        {
+            var validationContext = new ValidationContext(dto);
+            var validationResult = new List<ValidationResult>();
+
+            return Validator.TryValidateObject(dto, validationContext, validationResult, true);
+        }
+    }
+}
