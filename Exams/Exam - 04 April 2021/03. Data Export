@@ -1,0 +1,102 @@
+namespace TeisterMask.DataProcessor
+{
+    using System;
+    using System.Collections.Generic;
+    using System.Globalization;
+    using System.IO;
+    using System.Linq;
+    using System.Text;
+    using System.Xml.Serialization;
+    using Data;
+    using Microsoft.EntityFrameworkCore;
+    using Newtonsoft.Json;
+    using TeisterMask.Data.Models;
+    using TeisterMask.DataProcessor.ExportDto;
+    using Formatting = Newtonsoft.Json.Formatting;
+
+    public class Serializer
+    {
+        public static object HasSet { get; private set; }
+
+        public static string ExportProjectWithTheirTasks(TeisterMaskContext context)
+        {
+            HashSet<ProjectDTO> projects = context
+                .Projects
+                .Where(p => p.Tasks.Any())
+                .ToList()
+                .Select(p => new ProjectDTO()
+                {
+                    ProjectName = p.Name,
+                    EndDate = p.DueDate.HasValue ? "Yes" : "No",
+                    TaskCount = p.Tasks.Count(),
+                    Tasks = p.Tasks
+                    .ToList()
+                    .Select(t => new ProjectTasksDTO()
+                    {
+                        Name = t.Name,
+                        Label = t.LabelType.ToString()
+                    })
+                    .OrderBy(t => t.Name)
+                    .ToHashSet()
+                })
+                .OrderByDescending(p => p.TaskCount)
+                .ThenBy(p => p.ProjectName)
+                .ToHashSet();
+
+            StringBuilder sb = new StringBuilder();
+
+            XmlRootAttribute rootAttribute = new XmlRootAttribute("Projects");
+            XmlSerializer serializer = new XmlSerializer(typeof(HashSet<ProjectDTO>), rootAttribute);
+
+            XmlSerializerNamespaces ns = new XmlSerializerNamespaces();
+            ns.Add(string.Empty, string.Empty);
+
+            StringWriter sw = new StringWriter(sb);
+
+            serializer.Serialize(sw, projects,ns);
+            string da = sw.ToString().TrimEnd();
+            return sw.ToString().TrimEnd();
+        }
+
+        public static string ExportMostBusiestEmployees(TeisterMaskContext context, DateTime date)
+        {
+            var employees = context
+                  .Employees
+                  .Where(e => e.EmployeesTasks.Any(x => x.Task.OpenDate >= date))
+                  .ToList()
+                  .Select(x => new
+                  {
+                      x.Username,
+                      Tasks = x.EmployeesTasks
+                      .Where(t => t.Task.OpenDate >= date)
+                      .ToList()
+                      .OrderByDescending(t => t.Task.DueDate)
+                      .ThenBy(t => t.Task.Name)
+                      .Select(t => new
+                      {
+                          TaskName = t.Task.Name,
+                          OpenDate = t.Task.OpenDate.ToString("d", CultureInfo.InvariantCulture),
+                          DueDate = t.Task.DueDate.ToString("d", CultureInfo.InvariantCulture),
+                          LabelType = t.Task.LabelType.ToString(),
+                          ExecutionType = t.Task.ExecutionType.ToString()
+                      })
+                      .ToList()
+                  })
+                  .OrderByDescending(e => e.Tasks.Count)
+                  .ThenBy(e => e.Username)
+                  .Take(10)
+                  .ToList();
+
+            StringBuilder sb = new StringBuilder();
+            JsonSerializerSettings settings = new JsonSerializerSettings()
+            {
+                Formatting = Formatting.Indented,
+                PreserveReferencesHandling = PreserveReferencesHandling.Objects,
+            };
+
+            string result = JsonConvert.SerializeObject(employees);
+
+            return result;
+        }
+    }
+}
